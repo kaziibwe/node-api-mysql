@@ -1,116 +1,54 @@
 
 import express from 'express';
-const app =express();
+import morgan from 'morgan'
 
+const app = express();
+import { getall, post, getSingle, updateUser, deleteUser } from './controllers/UserController.js';
+
+const router = express.Router();
 
 app.use(express.json());
 
-import mysql from 'mysql2';
-
-// connecting Database
-const connection = mysql.createPool({
-    host: "localhost",
-    user: "alfred",
-    password: "Ka075.",
-    database: "nodedb",
-  });
 
 
-
-app.listen(5000,()=>{
-console.log("Server listening in http://localhost:5000")
+app.listen(5000, () => {
+  console.log("Server listening in http://localhost:5000")
 })
+app.use(
+  morgan('short')
 
+  );
 
-app.post("/creatUser", async (req, res) => {
-    try {
-      const { name, address, country } = req.body;
-      const [{ insertId }] = await connection.promise().query(
-        `INSERT INTO users (name, address, country) 
-            VALUES (?, ?,?)`,
-        [name, address, country]
-      );
-      res.status(202).json({
-        message: "User Created",
-      });
-    } catch (err) {
-      res.status(500).json({
-        message: err,
-      });
-    }
-  });
-
-  app.get("/users", async(req, res) => {
-    try {
-        const data = await connection.promise().query(
-          `SELECT *  from users;`
-        );
-        res.status(202).json({
-          users: data[0],
-        });
-      } catch (err) {
-        res.status(500).json({
-          message: err,
-        });
-      }
-});
-
-
-app.get("/user/:id", async(req, res) => {
-    try {
-        const {id} = req.params
-        const data = await connection.promise().query(
-          `SELECT *  from users where id = ?`,[id]
-        );
-        res.status(200).json({
-          user: data[0][0],
-        });
-      } catch (err) {
-        res.status(500).json({
-          message: err,
-        });
-      }
-});
-
-app.patch("/userUpdate/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { name, address, country } = req.body;
-      const update = await connection
-        .promise()
-        .query(
-          `UPDATE users set name = ?, address = ?, country = ? where id = ?`,
-          [ name, address, country,id]
-        );
-      res.status(200).json({
-        message: "updated",
-      });
-    } catch (err) {
-      res.status(500).json({
-        message: err,
-      });
-    }
-  });
+  app.use((req, res, next) => {
+    // Log request details
+    console.log(`IP: ${req.ip}`);
+    console.log(`Path: ${req.originalUrl}`);
+    console.log(`User-Agent: ${req.headers['user-agent']}`);
+    console.log(`Device Fingerprint: ${req.headers['x-device-fingerprint'] || 'unknown'}`);
   
-
-
-  app.delete("/userDelete/:id", async (req, res) => {
-    try {
-      const { id } = req.params;
-      const update = await connection
-        .promise()
-        .query(
-          `DELETE FROM  users where id = ?`,
-          [id]
-        );
-      res.status(200).json({
-        message: "deleted",
-      });
-    } catch (err) {
-      res.status(500).json({
-        message: err,
-      });
-    }
+    // Continue to the next middleware
+    next();
   });
+router.route('/users')
+  .get(getall)
+  .post(post);
 
 
+// Mount the router to the app
+router.route('/user/:id')
+  .get(getSingle);
+
+router.route('/userUpdate/:id')
+  .patch(updateUser);
+
+
+router.route('/userDelete/:id')
+  .delete(deleteUser);
+
+
+
+app.use('/', router);
+
+// app.use((req,res)=>{
+//   res.status(404).render('404',{title:'404'});
+// })
